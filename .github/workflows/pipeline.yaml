@@ -1,0 +1,79 @@
+name: Pipeline
+
+on: 
+  push:
+    branches:
+      - master
+jobs:
+  pipeline:
+    runs-on: ubuntu-20.04
+    steps:
+
+      - name: Checkout Respository
+        uses: actions/checkout@v2
+
+      - name: Prepare Container Tools
+        run: |
+             export DEBIAN_FRONTEND=noninteractive
+             sudo apt-get update -q
+             sudo apt-get install -y -qq pylint
+             echo "LABEL GITHUB_SHA ${GITHUB__SHA}." >> Dockerfile
+             echo "LABEL GITHUB_REF_NAME ${GITHUB_REF_NAME}." >> Dockerfile
+             echo "LABEL GITHUB_RUN_NUMBER ${GITHUB_RUN_NUMBER}." >> Dockerfile
+
+      - name: Check Code Style
+        run: |
+             pylint *.py || echo "Check code style"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push docker image to ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: password-gerador-pass
+        run: |
+             export IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_RUN_NUMBER}"."${GITHUB_SHA:0:7}"
+             docker build -t $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+             docker push $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Update Application Manifests
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: password-gerador-pass
+          MANIFESTS_REPOSITORY: ${{ secrets.MANIFESTS_REPOSITORY }}
+        run: |
+             export IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_RUN_NUMBER}"."${GITHUB_SHA:0:7}"
+             export IMAGE_URI="$REGISTRY\/$ECR_REPOSITORY:$IMAGE_TAG"
+             export IMAGE_URI_REGEX_PATTERN='image: [0-9]*.dkr.ecr.us-east-1.amazonaws.com\/password-gerador-pass:[a-z0-9]*[-][0-9]*[.][0-9a-f]*'
+             export IMAGE_TAG_REGEX_PATTERN='version: [a-z0-9]*[-][0-9]*[.][0-9a-f]*'
+             echo ---BEFORE CLONE---
+             ls -la
+             git clone ${MANIFESTS_REPOSITORY} ./MANIFESTS_REPOSITORY
+             echo ---AFTER CLONE---
+             ls -la
+             echo ---AFTER CLONE---
+             ls -la ./MANIFESTS_REPOSITORY
+             cd ./MANIFESTS_REPOSITORY
+             export NEW_DEPLOYMENT=$(sed s/"$IMAGE_URI_REGEX_PATTERN"/"image: $IMAGE_URI"/ ./$GITHUB_REF_NAME/password-gerador-pass-deployment.yaml)
+             export NEW_DEPLOYMENT=$(sed s/"$IMAGE_TAG_REGEX_PATTERN"/"version: $IMAGE_TAG"/ <<< "$NEW_DEPLOYMENT")
+             echo "-----OLD DEPLOYMENT-----"
+             cat ./$GITHUB_REF_NAME/password-gerador-pass-deployment.yaml
+             echo "$NEW_DEPLOYMENT" > ./$GITHUB_REF_NAME/password-gerador-pass-deployment.yaml
+             echo "-----NEW DEPLOYMENT-----"
+             cat ./$GITHUB_REF_NAME/password-gerador-pass-deployment.yaml
+             git config --global user.email "cicerow_ordb@gmail.com"
+             git config --global user.name "Cicero Woshington"
+             git status --short
+             git add ./$GITHUB_REF_NAME/password-gerador-pass-deployment.yaml
+             (git commit -m "change image - pipeline runner" && git push --force) || echo Git commit/push fail! Nothing to commit?
+
+             
