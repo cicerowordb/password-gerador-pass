@@ -38,6 +38,7 @@ Database component is a common MySQL database.
 - **MYSQL_PASSWORD**: 
 - **MYSQL_DATABASE**: 
 - **PONTUACAO**: '@#$%()[]<>'
+- **MYSQL_ROOT_PASSWORD**: only to mysql container
 
 # GitHub Secrets
 - AWS_ACCESS_KEY_ID: key to use Amanzon ERC image repository
