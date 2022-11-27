@@ -96,21 +96,21 @@ def insert_into_database(user, servico, password):
         'password':mysql_password,
         'database':mysql_database
     }
-    result = [ False, "ERRO!", 500 ]
+    result = [False, "ERRO!", 500]
     try:
         conn = mysql.connector.connect(**config)
         print("Conexao bem sucedida")
     except mysql.connector.Error as err:
         if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
             print("ERRO: Nome ou senha do banco incorretas (permissao).")
-            result = [ False, "ERRO: Nome ou senha do banco incorretas (permissao).", 501 ]
+            result = [False, "ERRO: Nome ou senha do banco incorretas (permissao).", 501]
         elif err.errno == errorcode.ER_BAD_DB_ERROR:
             print("ERRO: Banco não existe no servidor consultado.")
-            result = [ False, "ERRO: Banco nao existe no servidor consultado.", 502 ]
+            result = [False, "ERRO: Banco nao existe no servidor consultado.", 502]
         else:
             print("ERRO: não identificado no codigo.")
             print(err)
-            result = [ False, "ERRO: não identificado no codigo.<br>"+str(err), 503 ]
+            result = [False, "ERRO: não identificado no codigo.<br>"+str(err), 503]
     else:
         cursor = conn.cursor()
         try:
@@ -121,14 +121,14 @@ def insert_into_database(user, servico, password):
                 print("AVISO: Tabela já existe.")
             else:
                 print("ERRO: não identificado no código")
-                result = [ False, "ERRO: não identificado no código.", 504 ]
+                result = [False, "ERRO: não identificado no código.", 504]
                 print(err)
         print("Executando insert")
         cursor.execute("INSERT INTO dados_logon (servico, user, password) \
                         VALUES (%s, %s, %s);", (servico, user, password))
         print("Commint no banco")
         conn.commit()
-        result = [ True, "Dados inseridos com sucesso!", 200 ]
+        result = [True, "Dados inseridos com sucesso!", 200]
         cursor.close()
         print("Dados inseridos")
         conn.close()
@@ -152,7 +152,7 @@ def gerar(service='', user=''):
         database_output = insert_into_database(user, service, password)
         if database_output[0]:
             print("Finalizado procedimento de inserir no banco.")
-            return generate_list_content([[ '---', service, user, password ]]), 200
+            return generate_list_content([['---', service, user, password]]), 200
         else:
             print("Erro ao inserir no banco.")
             return generate_error_content(database_output[1]), database_output[2]
