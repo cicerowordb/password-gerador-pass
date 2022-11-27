@@ -17,6 +17,7 @@ jobs:
              export DEBIAN_FRONTEND=noninteractive
              sudo apt-get update -q
              sudo apt-get install -y -qq pylint
+             pip3 install pytest
              echo "LABEL GITHUB_SHA ${GITHUB__SHA}." >> Dockerfile
              echo "LABEL GITHUB_REF_NAME ${GITHUB_REF_NAME}." >> Dockerfile
              echo "LABEL GITHUB_RUN_NUMBER ${GITHUB_RUN_NUMBER}." >> Dockerfile
@@ -24,6 +25,10 @@ jobs:
       - name: Check Code Style
         run: |
              pylint *.py || echo "Check code style"
+
+      - name: Unit Tests
+        run: |
+             pytest -v 
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
